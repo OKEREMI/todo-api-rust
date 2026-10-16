@@ -1,0 +1,33 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: rust-todo-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-todo}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-todopass}
+      POSTGRES_DB: ${POSTGRES_DB:-tododb}
+    volumes:
+      - rust_todo_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build: .
+    container_name: rust-todo-api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-todo}:${POSTGRES_PASSWORD:-todopass}@db:5432/${POSTGRES_DB:-tododb}
+      RUST_LOG: ${RUST_LOG:-info}
+      PORT: "3000"
+    ports:
+      - "3000:3000"
+
+volumes:
+  rust_todo_pgdata:
